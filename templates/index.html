@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>跑步文件工作台</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<main>
+  <header><div class="eyebrow">RUN / FILE STUDIO</div><h1>每一段距离，<br>都有据可查。</h1><p>设置参数、核对轨迹，导出用于兼容性测试的模拟运动文件。</p><span class="badge">TCX / FIT · Keep 文件导入</span></header>
+  <div class="workspace">
+  <form id="settings" novalidate>
+    <section><div class="section-title"><span>01</span><h2>运动参数</h2></div>
+      <div class="grid">
+        <label>目标距离 / 米<input id="distance" type="number" min="100" max="20000" step="1" value="2000" required></label>
+        <label>配速 / 每公里<input id="pace" type="text" value="6:00" placeholder="分:秒，例如 6:00" pattern="[0-9]+:[0-5][0-9]" required></label>
+        <label>采样间隔 / 秒<select id="interval"><option value="2">2 秒</option><option value="5">5 秒</option><option value="10">10 秒</option></select></label>
+      </div>
+      <div class="grid details-grid">
+        <label>配速波动强度 / %<input id="pace-variation" type="number" min="0" max="20" step="1" value="8" required></label>
+        <label>横向变道幅度 / 米<input id="lane-variation" type="number" min="0" max="3" step="0.1" value="1.5" required></label>
+        <label>变化编号<input id="random-seed" type="number" min="0" max="2147483647" step="1" value="42" required></label>
+      </div>
+      <button id="reshuffle" class="text-button" type="button">↻ 换一组变化</button>
+      <p class="hint">平均配速保持设定值。末段有 75% 概率采用加速趋势；变道平滑过渡，不是 GPS 测量。两个幅度设为 0 可恢复规则轨迹与匀速。</p>
+    </section>
+    <section><div class="section-title"><span>02</span><h2>开始时间</h2></div>
+      <div id="times"></div><button id="add-time" class="text-button" type="button">＋ 添加一条记录</button>
+      <p class="hint">所有时间均为北京时间（UTC+8）。多条记录导出为 ZIP，最多 20 条。</p>
+    </section>
+    <section><div class="section-title"><span>03</span><h2>跑道与模拟心率</h2></div>
+      <details><summary>调整跑道位置与形状</summary><div class="grid details-grid">
+        <label>中心纬度 / WGS84<input id="lat" type="number" min="-80" max="80" step="any" value="{{ defaults.center_lat }}" required></label>
+        <label>中心经度 / WGS84<input id="lon" type="number" min="-179" max="179" step="any" value="{{ defaults.center_lon }}" required></label>
+        <label>单段直道 / 米<input id="straight" type="number" min="10" max="500" step="any" value="100" required></label>
+        <label>弯道半径 / 米<input id="radius" type="number" min="10" max="200" step="any" value="{{ defaults.radius_m }}" required></label>
+        <label>顺时针旋转 / 度<input id="rotation" type="number" min="-360" max="360" step="any" value="{{ defaults.rotation_deg }}" required></label>
+      </div><p class="hint">几何模型为两段直道与两个半圆。预览显示相对位置，不是在线地图。</p></details>
+      <label class="check"><input id="simulate-hr" type="checkbox"> 添加模拟心率</label>
+      <div id="hr-fields" class="grid" hidden>
+        <label>心率下限<input id="hr-min" type="number" min="40" max="220" step="1" value="100"></label>
+        <label>心率上限<input id="hr-max" type="number" min="40" max="220" step="1" value="190"></label>
+      </div>
+      <p class="hint">心率默认留空。启用后生成不规则短期波动，并滞后响应配速；全部为模拟值。</p>
+      <div class="grid">
+        <label>心率目标 / bpm<input id="hr-target" type="number" min="40" max="220" value="155"></label>
+        <label>心率波动强度 / bpm<input id="hr-variation" type="number" min="0" max="15" step="0.5" value="4"></label>
+        <label>心率响应时间 / 秒<input id="hr-response" type="number" min="5" max="90" value="20"></label>
+        <label>热身上升时间 / 秒<input id="hr-warmup" type="number" min="0" max="180" value="45"></label>
+      </div>
+    </section>
+    <section><div class="section-title"><span>04</span><h2>更多模拟指标</h2></div>
+      <label>暂停秒数 / 总时长差额<input id="pause-seconds" type="number" min="0" max="60" step="1" value="3"></label>
+      <label class="check"><input id="simulate-metrics" type="checkbox" checked> 添加消耗、步频、功率、步幅和高度</label>
+      <div id="metric-fields" class="grid">
+        <label>体重 / 千克<input id="weight" type="number" min="30" max="180" value="65"></label>
+        <label>平均步频 / 步每分钟<input id="cadence" type="number" min="100" max="220" value="164"></label>
+        <label>平均功率 / 瓦<input id="power" type="number" min="50" max="600" value="250"></label>
+        <label>基础海拔 / 米<input id="altitude" type="number" min="-400" max="5000" value="35"></label>
+        <label>累计爬升 / 米<input id="ascent" type="number" min="0" max="200" value="0"></label>
+        <label>模拟主观强度 / 1–10<input id="rpe" type="number" min="1" max="10" step="0.5" value="3"></label>
+      </div>
+      <p class="hint">步幅由速度与步频推导。平坦操场爬升默认 0；消耗和负荷仅为本地估算，Keep 是否展示由其导入规则决定。</p>
+      <label>导出格式<select id="export-format"><option value="tcx">TCX · 已验证基础导入</option><option value="fit">FIT · 更多原生指标</option></select></label>
+    </section>
+    <div class="actions"><button id="preview" type="button" class="secondary">预览第一条</button><button id="generate" type="submit" class="primary">下载 TCX</button></div>
+    <p id="status" role="status" aria-live="polite">先预览并核对，再下载文件。</p>
+  </form>
+  <aside>
+    <section class="preview-card"><div class="section-title"><span>VIEW</span><h2>轨迹预览</h2></div>
+      <div class="canvas-wrap"><canvas id="track" width="900" height="720" aria-label="跑道轨迹和起终点示意图" role="img"></canvas><div id="empty">点击「预览第一条」<small>查看跑道、起终点与活动统计</small></div></div>
+      <div class="legend"><span><i class="start-dot"></i>起点</span><span><i class="end-dot"></i>终点</span><span>相对坐标 / 米</span></div>
+      <dl id="stats"><div><dt>轨迹距离</dt><dd>—</dd></div><div><dt>训练时长</dt><dd>—</dd></div><div><dt>平均配速</dt><dd>—</dd></div><div><dt>轨迹点</dt><dd>—</dd></div></dl>
+      <p id="summary-note" class="hint">预览与导出共用同一份生成逻辑。</p>
+      <dl id="extra-stats"></dl>
+      <h3 class="split-title">每公里配速</h3><div id="splits" class="splits">预览后显示，最后不足 1 公里单独标注。</div>
+      <canvas id="pace-chart" width="900" height="220" hidden role="img" aria-label="模拟配速随距离变化曲线"></canvas>
+      <canvas id="heart" width="900" height="220" hidden role="img" aria-label="模拟心率随运动时间变化曲线"></canvas>
+    </section>
+    <section class="import-card"><h2>在安卓 Keep 中导入</h2><ol><li>下载并将文件传到手机。</li><li>打开 Keep 的「数据文件导入」，选择 TCX、FIT 或 ZIP。</li><li>等待处理，在「数据中心」核对时间、距离与轨迹。</li></ol><p class="hint">文件已标识为模拟数据。通过格式校验不等于 Keep 已接受；首次请只导入一条测试记录。</p></section>
+  </aside>
+  </div>
+  <footer>本地生成 · 不需要账号密码 · 无在线样式依赖</footer>
+</main>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body></html>

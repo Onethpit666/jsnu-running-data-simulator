@@ -1,0 +1,30 @@
+# Python and local environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.env
+.env.*
+!.env.example
+.pytest_cache/
+.coverage
+htmlcov/
+# Generated files and activity records
+build/
+dist/
+*.spec
+*.exe
+*.log
+samples/
+outputs/
+*.fit
+*.tcx
+*.gpx
+*.zip
+# Local settings and editor files
+config.local.*
+.idea/
+.vscode/
+Thumbs.db
+.DS_Store
